@@ -41,4 +41,4 @@ const deleteRequest = async(path,data) =>{
     
 }
 
-export {getRequest , getResponse , postRequest , deleteRequest}
+export {getRequest , putRequest , postRequest , deleteRequest}

@@ -1,21 +1,56 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import axios from "axios";
 
 const AdminDashboard = () => {
   const [loans, setLoans] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
+  // Fetch loans from backend
   const fetchLoans = async () => {
     try {
-      // const response = await axios.get("http://localhost:5000/admin/loans");
-      // setLoans(response.data);
-      setLoans([
-        { _id: "1", category: "Wedding", subcategory: "Valima", amount: 500000, status: "Pending" },
-        { _id: "2", category: "Business", subcategory: "Shop Assets", amount: 1000000, status: "Approved" },
-        { _id: "3", category: "Education", subcategory: "University Fees", amount: 200000, status: "Rejected" },
-      ]);
+      setLoading(true);
+      const response = await axios.get("http://localhost:8000/api/admin/applications", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setLoans(response.data.applications);
+      setLoading(false);
     } catch (error) {
-      alert("Failed to fetch loans");
+      setError("Failed to fetch loans.");
+      setLoading(false);
     }
   };
+
+  // Update loan application status (approve or reject)
+  const updateApplicationStatus = async (id, status) => {
+    try {
+      setLoading(true);
+      await axios.put(
+        `http://localhost:8000/api/admin/update/${id}`,
+        { status }
+      );
+
+      setLoans((prevLoans) =>
+        prevLoans.map((loan) =>
+          loan._id === id ? { ...loan, status } : loan
+        )
+      );
+      setLoading(false);
+    } catch (error) {
+      setError("Failed to update loan status.");
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLoans(); // Fetch the loans when component mounts
+  }, []);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex bg-gray-100">
@@ -49,11 +84,9 @@ const AdminDashboard = () => {
         </ul>
       </div>
 
-     
       <div className="flex-1 p-8">
-     
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Dashboard</h1>
+          <h1 className="text-3xl font-bold">Loan Applications</h1>
           <div className="flex items-center space-x-4">
             <span>👤 Admin</span>
             <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
@@ -62,29 +95,13 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold">Total Loans</h2>
-            <p className="text-3xl">123</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold">Pending Loans</h2>
-            <p className="text-3xl">45</p>
-          </div>
-          <div className="bg-white p-6 rounded-lg shadow-md">
-            <h2 className="text-xl font-bold">Approved Loans</h2>
-            <p className="text-3xl">78</p>
-          </div>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-bold mb-4">Loan Applications</h2>
-          <button
-            onClick={fetchLoans}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 mb-4"
-          >
-            Fetch Loans
-          </button>
+        <div className="bg-white p-6 rounded-lg shadow-md mb-8">
+          {error && (
+            <div className="bg-red-500 text-white p-4 rounded-md mb-4">
+              {error}
+            </div>
+          )}
+          <h2 className="text-xl font-bold mb-4">Manage Loan Applications</h2>
           <table className="w-full">
             <thead>
               <tr className="bg-gray-200">
@@ -103,19 +120,33 @@ const AdminDashboard = () => {
                   <td className="p-3">PKR {loan.amount}</td>
                   <td className="p-3">
                     <span
-                      className={`px-2 py-1 rounded-full text-sm ${
-                        loan.status === "Approved"
-                          ? "bg-green-100 text-green-700"
-                          : loan.status === "Rejected"
+                      className={`px-2 py-1 rounded-full text-sm ${loan.status === "Approved"
+                        ? "bg-green-100 text-green-700"
+                        : loan.status === "Rejected"
                           ? "bg-red-100 text-red-700"
                           : "bg-yellow-100 text-yellow-700"
-                      }`}
+                        }`}
                     >
                       {loan.status}
                     </span>
                   </td>
-                  <td className="p-3">
-                    <button className="text-purple-600 hover:text-purple-700">View</button>
+                  <td className="p-3 flex gap-2">
+                    {loan.status === "Pending" && (
+                      <>
+                        <button
+                          onClick={() => updateApplicationStatus(loan._id, "approved")}
+                          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition duration-300"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => updateApplicationStatus(loan._id, "rejected")}
+                          className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition duration-300"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}
